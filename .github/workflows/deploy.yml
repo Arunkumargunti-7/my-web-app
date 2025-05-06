@@ -1,0 +1,45 @@
+name: Deploy to AWS ECS
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: my-web-app
+  ECS_CLUSTER: my-web-app-cluster
+  ECS_SERVICE: my-web-app-service
+  ECS_TASK_DEFINITION: my-web-app-task
+  CONTAINER_NAME: my-web-app
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build, tag, and push Docker image
+      id: build-image
+      run: |
+        docker build -t $ECR_REPOSITORY .
+        docker tag $ECR_REPOSITORY:latest <aws_account_id>.dkr.ecr.us-east-1.amazonaws.com/$ECR_REPOSITORY:latest
+        docker push <aws_account_id>.dkr.ecr.us-east-1.amazonaws.com/$ECR_REPOSITORY:latest
+
+    - name: Update ECS service
+      run: |
+        ecs_task_definition=$(aws ecs
+::contentReference[oaicite:0]{index=0}
+ 
