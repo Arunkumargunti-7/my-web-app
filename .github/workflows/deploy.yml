@@ -35,11 +35,26 @@ jobs:
       id: build-image
       run: |
         docker build -t $ECR_REPOSITORY .
-        docker tag $ECR_REPOSITORY:latest <aws_account_id>.dkr.ecr.us-east-1.amazonaws.com/$ECR_REPOSITORY:latest
-        docker push <aws_account_id>.dkr.ecr.us-east-1.amazonaws.com/$ECR_REPOSITORY:latest
+        docker tag $ECR_REPOSITORY:latest <aws_account_id>.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/$ECR_REPOSITORY:latest
+        docker push <aws_account_id>.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/$ECR_REPOSITORY:latest
 
     - name: Update ECS service
       run: |
-        ecs_task_definition=$(aws ecs
-::contentReference[oaicite:0]{index=0}
- 
+        ecs_task_definition=$(aws ecs register-task-definition \
+          --family $ECS_TASK_DEFINITION \
+          --container-definitions '[{
+            "name": "$CONTAINER_NAME",
+            "image": "<aws_account_id>.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/$ECR_REPOSITORY:latest",
+            "memory": 512,
+            "cpu": 256,
+            "essential": true
+          }]'
+        )
+        ecs_task_definition_arn=$(echo $ecs_task_definition | jq -r '.taskDefinition.taskDefinitionArn')
+
+        aws ecs update-service \
+          --cluster $ECS_CLUSTER \
+          --service $ECS_SERVICE \
+          --task-definition $ecs_task_definition_arn \
+          --force-new-deployment \
+          --region $AWS_REGION
